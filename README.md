@@ -1,0 +1,2 @@
+# ComicsViewer
+ComicsViewer by Qt
