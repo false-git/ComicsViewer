@@ -61,6 +61,9 @@ ApplicationWindow {
 
     ComicModel {
         id: comicModel
+        onCurrentPageChanged: {
+            pageSlider.value = currentPage
+        }
     }
 
     Item {
@@ -86,7 +89,7 @@ ApplicationWindow {
         }
         Slider {
             id: pageSlider
-            value: comicModel.currentPage
+            stepSize: 1
             minimumValue: comicModel.maxPage === 0 ? 0 : 1
             maximumValue: comicModel.maxPage === 0 ? 1 : comicModel.maxPage
             anchors.bottom: parent.bottom
