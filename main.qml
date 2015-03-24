@@ -92,7 +92,7 @@ ApplicationWindow {
             stepSize: 1
             property int pageNumber: 1
             minimumValue: 0
-            maximumValue: comicModel.maxPage === 0 ? 0 : comicModel.maxPage - 1
+            maximumValue: comicModel.maxPage < 2 ? 1 : comicModel.maxPage - 1
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.leftMargin: 10
