@@ -7,7 +7,7 @@ import ComicsViewer 1.0
 
 ApplicationWindow {
     id: appWindow
-    title: qsTr("Comics Viewer") + ((comicModel.currentFilename === "") ? "" : " - " + comicModel.currentFilename)
+    title: qsTr("Comics Viewer") + ((comicModel.currentFilename === "") ? "" : " - " + comicModel.currentFilename + comicModel.currentPageName)
     width: 640
     height: 480
     visible: true

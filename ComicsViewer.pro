@@ -1,6 +1,7 @@
 TEMPLATE = app
 
 QT += qml quick widgets
+CONFIG += c++11
 
 !defined(QUAZIP_DIR, var) {
     QUAZIP_DIR = $(HOME)/qt/quazip

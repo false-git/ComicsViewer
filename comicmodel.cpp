@@ -4,7 +4,6 @@
 #include <QUrl>
 #include <QDebug>
 #include <QFile>
-#include <QList>
 #include <QQuickPaintedItem>
 #include <QPainter>
 #include <QSettings>
@@ -23,10 +22,12 @@ class PageData {
 public:
     int pageNumber; // ページ(1〜)
     QString fileName; // 画像ファイル名
+    QString filePath; // 画像ファイル名(subzip込み)
     int nop; // 1ページ表示 or 2ページ表示
+    std::shared_ptr<QuaZip> zip; // 画像が含まれるzipファイル
 };
 
-ComicModel::ComicModel(QObject *parent) : QAbstractListModel(parent), m_zip(0), m_currentPage(0)
+ComicModel::ComicModel(QObject *parent) : QAbstractListModel(parent), m_currentPage(0)
 {
     restoreRecentFile();
 }
@@ -38,54 +39,44 @@ ComicModel::~ComicModel()
 
 bool ComicModel::open(const QString &fileUrl)
 {
-    if (m_zip) {
+    if (m_currentFilename != "") {
         close();
     }
     QUrl url(fileUrl);
-    m_zip = new QuaZip(url.toLocalFile());
-    m_zip->setFileNameCodec("Shift-JIS");
-    bool result = m_zip->open(QuaZip::mdUnzip);
+    std::shared_ptr<QuaZip> zip(new QuaZip(url.toLocalFile()));
+    zip->setFileNameCodec("Shift-JIS");
+    bool result = zip->open(QuaZip::mdUnzip);
     if (result) {
-        QStringList fileNameList = m_zip->getFileNameList();
-        fileNameList.sort();
-        for (int i = 0; i < fileNameList.size(); i++) {
-            if (fileNameList[i].endsWith(".jpg")) {
-                PageData *d = new PageData;
-                d->pageNumber = i + 1;
-                d->fileName = fileNameList[i];
-                d->nop = 0;
-                m_list.append(d);
-            }
+        int pageCount;
+        if (parseZip("", zip, pageCount)) {
+            setErrorMessage();
+            addRecentFile(url.toLocalFile());
+            m_currentFilename = url.toLocalFile();
+            emit currentFilenameChanged(m_currentFilename);
+            emit maxPageChanged(m_list.size());
+            QSettings settings;
+            QString key = QString(RECENTPAGE_KEY).arg(m_currentFilename);
+            int page = settings.value(key, 1).toInt();
+            setCurrentPage(page);
+        } else {
+            setErrorMessage("zip file is empty.");
         }
-        setErrorMessage();
-        addRecentFile(url.toLocalFile());
     } else {
         setErrorMessage("open file error.");
     }
-    emit maxPageChanged(m_list.size());
-    m_currentFilename = url.toLocalFile();
-    emit currentFilenameChanged(m_currentFilename);
-    QSettings settings;
-    QString key = QString(RECENTPAGE_KEY).arg(m_currentFilename);
-    int page = settings.value(key, 1).toInt();
-    setCurrentPage(page);
     return result;
 }
 
 void ComicModel::close()
 {
-    if (m_zip) {
-        m_zip->close();
-        delete m_zip;
+    if (m_currentFilename != "") {
         // 読んでいたページの保存。削除がないので、recent_fileを消すときに一緒に消した方が良いかも
         QSettings settings;
         QString key = QString(RECENTPAGE_KEY).arg(m_currentFilename);
         settings.setValue(key, m_currentPage);
     }
-    for (int i = 0; i < m_list.size(); i++) {
-        delete m_list[i];
-    }
     m_list.clear();
+    m_buffers.clear();
     emit maxPageChanged(m_list.size());
     m_currentPage = 0;
     emit currentPageChanged(m_currentPage);
@@ -95,14 +86,13 @@ void ComicModel::close()
 
 void ComicModel::setCurrentPage(int arg)
 {
-    //qDebug() << "setCurrentPage" << m_currentPage << arg;
     if (m_currentPage == arg) {
         return;
     }
     if (arg < 1 || arg > m_list.size()) {
         return;
     }
-    PageData *data = m_list[arg - 1];
+    std::shared_ptr<PageData> data = m_list[arg - 1];
     m_currentPage = arg;
     QImage right = loadImage(arg);
     QImage img = right;
@@ -123,6 +113,7 @@ void ComicModel::setCurrentPage(int arg)
     }
     m_currentImage = img;
     emit currentPageChanged(m_currentPage);
+    emit currentPageNameChanged(data->filePath);
     emit currentImageChanged(m_currentImage);
 }
 
@@ -179,8 +170,8 @@ QImage ComicModel::loadImage(int arg)
     QImage img;
     --arg;
     //qDebug() << m_list[arg]->fileName;
-    if (m_zip->setCurrentFile(m_list[arg]->fileName)) {
-        QuaZipFile file(m_zip);
+    if (m_list[arg]->zip->setCurrentFile(m_list[arg]->fileName)) {
+        QuaZipFile file(m_list[arg]->zip.get());
         if (file.open(QIODevice::ReadOnly)) {
             QByteArray data = file.readAll();
             file.close();
@@ -239,6 +230,51 @@ void ComicModel::restoreRecentFile()
     }
 }
 
+bool ComicModel::parseZip(const QString &path, std::shared_ptr<QuaZip> zip, int &pageCount)
+{
+    QStringList fileNameList = zip->getFileNameList();
+    fileNameList.sort();
+    bool hasPage = false;
+    pageCount = 0;
+    for (const QString &filename: fileNameList) {
+        if (filename.endsWith(".zip")) {
+            if (zip->setCurrentFile(filename)) {
+                QuaZipFile file(zip.get());
+                if (file.open(QIODevice::ReadOnly)) {
+                    QByteArray data = file.readAll();
+                    file.close();
+                    std::shared_ptr<QBuffer> buf(new QBuffer);
+                    buf->setData(data);
+                    std::shared_ptr<QuaZip> subzip(new QuaZip(buf.get()));
+                    int subPageCount = 0;
+                    if (subzip->open(QuaZip::mdUnzip)) {
+                        hasPage |= parseZip(path + "/" + filename, subzip, subPageCount);
+                    } else {
+                        qDebug() << subzip->getZipError();
+                    }
+                    if (subPageCount > 0) {
+                        m_buffers.append(buf);
+                    }
+                } else {
+                    qDebug() << "file open error " << path << filename;
+                }
+            }
+        } else if (filename.endsWith(".jpg")) {
+            std::shared_ptr<PageData> d(new PageData);
+            d->pageNumber = m_list.size() + 1;
+            d->fileName = filename;
+            d->filePath = path + "/" + filename;
+            d->nop = 0;
+            d->zip = zip;
+            m_list.append(d);
+            hasPage = true;
+            pageCount++;
+        }
+    }
+    return hasPage;
+
+}
+
 int ComicModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
@@ -251,7 +287,7 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
     if (row < 0 || row >= m_list.size()) {
         return QVariant();
     }
-    PageData *d = m_list[row];
+    std::shared_ptr<PageData> d = m_list[row];
     switch (role) {
     case PageNumberRole:
         return d->pageNumber;
@@ -277,6 +313,14 @@ QHash<int, QByteArray> ComicModel::roleNames() const
 int ComicModel::currentPage() const
 {
     return m_currentPage;
+}
+
+QString ComicModel::currentPageName() const
+{
+    if (m_currentPage < 1 || m_currentPage > m_list.size()) {
+        return "";
+    }
+    return m_list[m_currentPage - 1]->filePath;
 }
 
 QImage ComicModel::currentImage() const

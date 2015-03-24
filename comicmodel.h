@@ -1,9 +1,11 @@
 #ifndef COMICMODEL_H
 #define COMICMODEL_H
 
+#include <memory>
 #include <QAbstractListModel>
 #include <QList>
 #include <QImage>
+#include <QBuffer>
 
 class PageData;
 class QuaZip;
@@ -21,6 +23,11 @@ class ComicModel : public QAbstractListModel
      * \brief 現在のページ
      */
     Q_PROPERTY(int currentPage READ currentPage WRITE setCurrentPage NOTIFY currentPageChanged)
+    /*!
+     * \property ComicModel::currentPageName
+     * \brief 現在のページのファイル名
+     */
+    Q_PROPERTY(QString currentPageName READ currentPageName NOTIFY currentPageNameChanged)
     /*!
      * \property ComicModel::currentImage
      * \brief 現在のイメージ
@@ -71,6 +78,11 @@ signals:
      * \param currentPage 現在のページ
      */
     void currentPageChanged(int currentPage);
+    /*!
+     * \brief 現在のページが変更されたときにemitされるシグナル
+     * \param currentPageName 現在のページのファイル名
+     */
+    void currentPageNameChanged(QString currentPageName);
     /*!
      * \brief 現在のページのイメージが変更されたときにemitされるシグナル
      * \param currentImage 現在のページのイメージ
@@ -144,11 +156,11 @@ private:
     /*!
      * \brief ページデータのリスト
      */
-    QList<PageData *> m_list;
+    QList<std::shared_ptr<PageData>> m_list;
     /*!
-     * \brief 現在開いているファイル
+     * \brief zipバッファのリスト
      */
-    QuaZip *m_zip;
+     QList<std::shared_ptr<QBuffer>> m_buffers;
     /*!
      * \brief 現在のページ(右)
      */
@@ -171,7 +183,7 @@ private:
     QString m_currentFilename;
     /*!
      * \brief 画像を読みこむ
-     * \param page 読み込むページ(右)
+     * \param page 読み込むページ
      * \return ページ画像
      */
     QImage loadImage(int page);
@@ -189,6 +201,14 @@ private:
      * \brief 最近開いたファイルを設定から読み込む
      */
     void restoreRecentFile();
+    /*!
+     * \brief zipファイルを調べる
+     * \param path zipファイルのパス
+     * \param zip zipファイル
+     * \param pageCount このzipファイルに含まれるページの数(サブzipは含まない)
+     * \return 一つでもjpgがあればtrue
+     */
+    bool parseZip(const QString &path, std::shared_ptr<QuaZip> zip, int &pageCount);
 
 public:
     /*!
@@ -214,6 +234,11 @@ public:
      * @return 現在のページ
      */
     int currentPage() const;
+    /**
+     * @brief 現在のページのファイル名を返す
+     * @return 現在のページのファイル名
+     */
+    QString currentPageName() const;
     /*!
      * \brief 現在の画像を返す
      * \return 現在の画像
