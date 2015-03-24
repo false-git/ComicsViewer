@@ -62,7 +62,7 @@ ApplicationWindow {
     ComicModel {
         id: comicModel
         onCurrentPageChanged: {
-            pageSlider.value = currentPage
+            pageSlider.pageNumber = currentPage
         }
     }
 
@@ -90,17 +90,22 @@ ApplicationWindow {
         Slider {
             id: pageSlider
             stepSize: 1
-            minimumValue: comicModel.maxPage === 0 ? 0 : 1
-            maximumValue: comicModel.maxPage === 0 ? 1 : comicModel.maxPage
+            property int pageNumber: 1
+            minimumValue: 0
+            maximumValue: comicModel.maxPage === 0 ? 0 : comicModel.maxPage - 1
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.leftMargin: 10
             anchors.right: pageRect.left
             anchors.rightMargin: 10
             onValueChanged: {
-                if (comicModel.currentPage !== value) {
-                    comicModel.currentPage = value
+                pageNumber = maximumValue - value + 1
+                if (comicModel.currentPage !== pageNumber) {
+                    comicModel.currentPage = pageNumber
                 }
+            }
+            onPageNumberChanged: {
+                value = maximumValue - pageNumber + 1
             }
         }
         Rectangle {
@@ -113,7 +118,7 @@ ApplicationWindow {
             Text {
                 id: pageText
                 anchors.centerIn: parent
-                text: pageSlider.value + " / " + pageSlider.maximumValue
+                text: pageSlider.pageNumber + " / " + comicModel.maxPage
             }
         }
     }
