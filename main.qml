@@ -98,14 +98,19 @@ ApplicationWindow {
             anchors.leftMargin: 10
             anchors.right: pageRect.left
             anchors.rightMargin: 10
+            rotation: 180
             onValueChanged: {
-                pageNumber = maximumValue - value + 1
-                if (comicModel.currentPage !== pageNumber) {
-                    comicModel.currentPage = pageNumber
+                if (pageNumber != value + 1) {
+                    pageNumber = value + 1
+                    if (comicModel.currentPage !== pageNumber) {
+                        comicModel.currentPage = pageNumber
+                    }
                 }
             }
             onPageNumberChanged: {
-                value = maximumValue - pageNumber + 1
+                if (value != pageNumber - 1) {
+                    value = pageNumber - 1
+                }
             }
         }
         Rectangle {
