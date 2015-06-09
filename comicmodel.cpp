@@ -237,7 +237,7 @@ bool ComicModel::parseZip(const QString &path, std::shared_ptr<QuaZip> zip, int 
     bool hasPage = false;
     pageCount = 0;
     for (const QString &filename: fileNameList) {
-        if (filename.endsWith(".zip")) {
+        if (filename.toLower().endsWith(".zip")) {
             if (zip->setCurrentFile(filename)) {
                 QuaZipFile file(zip.get());
                 if (file.open(QIODevice::ReadOnly)) {
@@ -246,6 +246,7 @@ bool ComicModel::parseZip(const QString &path, std::shared_ptr<QuaZip> zip, int 
                     std::shared_ptr<QBuffer> buf(new QBuffer);
                     buf->setData(data);
                     std::shared_ptr<QuaZip> subzip(new QuaZip(buf.get()));
+                    subzip->setFileNameCodec("Shift-JIS");
                     int subPageCount = 0;
                     if (subzip->open(QuaZip::mdUnzip)) {
                         hasPage |= parseZip(path + "/" + filename, subzip, subPageCount);
@@ -259,7 +260,7 @@ bool ComicModel::parseZip(const QString &path, std::shared_ptr<QuaZip> zip, int 
                     qDebug() << "file open error " << path << filename;
                 }
             }
-        } else if (filename.endsWith(".jpg")) {
+        } else if (filename.toLower().endsWith(".jpg")) {
             std::shared_ptr<PageData> d(new PageData);
             d->pageNumber = m_list.size() + 1;
             d->fileName = filename;
