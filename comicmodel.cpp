@@ -260,7 +260,7 @@ bool ComicModel::parseZip(const QString &path, std::shared_ptr<QuaZip> zip, int 
                     qDebug() << "file open error " << path << filename;
                 }
             }
-        } else if (filename.toLower().endsWith(".jpg")) {
+        } else if (filename.toLower().endsWith(".jpg") || filename.toLower().endsWith(".png")) {
             std::shared_ptr<PageData> d(new PageData);
             d->pageNumber = m_list.size() + 1;
             d->fileName = filename;
