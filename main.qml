@@ -1,9 +1,10 @@
-import QtQuick 2.4
-import QtQuick.Controls 1.3
-import QtQuick.Window 2.2
-import QtQuick.Dialogs 1.2
-import Qt.labs.settings 1.0
-import ComicsViewer 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Window
+import QtQuick.Dialogs
+import Qt.labs.settings
+import Qt.labs.platform as Platform
+import ComicsViewer
 
 ApplicationWindow {
     id: appWindow
@@ -19,41 +20,40 @@ ApplicationWindow {
         property alias height: appWindow.height
     }
 
-    menuBar: MenuBar {
-        Menu {
+    Platform.MenuBar {
+        Platform.Menu {
             title: qsTr("&File")
-            MenuItem {
+            Platform.MenuItem {
                 text: qsTr("&Open...")
                 onTriggered: fileDialog.open()
             }
-            Menu {
+            Platform.Menu {
                 id: recentFileMenu
                 title: qsTr("Open &recent")
                 Instantiator {
                     model: comicModel.recentFiles
-                    onObjectAdded: recentFileMenu.insertItem(index, object)
-                    onObjectRemoved: recentFileMenu.removeItem(object)
-                    delegate: MenuItem {
+                    onObjectAdded: (index, object) => recentFileMenu.insertItem(index, object)
+                    onObjectRemoved: object => recentFileMenu.removeItem(object)
+                    delegate: Platform.MenuItem {
                         text: modelData
                         onTriggered: comicModel.open("file://" + modelData)
                     }
                 }
-                MenuSeparator {
+                Platform.MenuSeparator {
 
                 }
-                MenuItem {
+                Platform.MenuItem {
                     text: qsTr("&Delete all")
                     onTriggered: comicModel.clearRecentFiles()
                 }
             }
-            MenuItem {
+            Platform.MenuItem {
                 text: qsTr("E&xit")
                 onTriggered: Qt.quit();
             }
         }
     }
-    statusBar: StatusBar {
-        anchors.fill: parent
+    footer: ToolBar {
         Label {
             text: comicModel.errorMessage
         }
@@ -61,7 +61,7 @@ ApplicationWindow {
 
     ComicModel {
         id: comicModel
-        onCurrentPageChanged: {
+        onCurrentPageChanged: function(currentPage) {
             pageSlider.pageNumber = currentPage
         }
     }
@@ -91,8 +91,8 @@ ApplicationWindow {
             id: pageSlider
             stepSize: 1
             property int pageNumber: 1
-            minimumValue: 0
-            maximumValue: comicModel.maxPage < 2 ? 1 : comicModel.maxPage - 1
+            from: 0
+            to: comicModel.maxPage < 2 ? 1 : comicModel.maxPage - 1
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.leftMargin: 10
@@ -129,6 +129,7 @@ ApplicationWindow {
     }
 
     FocusScope {
+        id: focus
         focus: true
         Keys.onRightPressed: {
             comicModel.previousPage()
@@ -147,8 +148,13 @@ ApplicationWindow {
     FileDialog {
         id: fileDialog
         onAccepted: {
-            comicModel.open(fileUrl)
+            comicModel.open(selectedFile)
             //comicModel.currentPage = 1
+        }
+        onVisibleChanged: {
+            if (!visible) {
+                focus.forceActiveFocus()
+            }
         }
     }
 }
