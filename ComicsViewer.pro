@@ -13,7 +13,7 @@ CONFIG += c++11
 QMAKE_INCDIR += $$QUAZIP_DIR/include
 QMAKE_LIBDIR += $$QUAZIP_DIR/lib
 QMAKE_RPATHDIR += $$QUAZIP_DIR/lib
-QMAKE_LIBS += -lquazip
+QMAKE_LIBS += -lquazip1-qt6
 
 macx: ICON = ComicsViewer.icns
 win32: RC_FILE = ComicsViewer.rc
