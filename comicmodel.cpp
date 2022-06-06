@@ -1,6 +1,7 @@
 #include "comicmodel.h"
 
 #include <QImage>
+#include <QImageReader>
 #include <QUrl>
 #include <QDebug>
 #include <QFile>
@@ -29,6 +30,7 @@ public:
 
 ComicModel::ComicModel(QObject *parent) : QAbstractListModel(parent), m_currentPage(0)
 {
+    QImageReader::setAllocationLimit(0);
     restoreRecentFile();
 }
 
