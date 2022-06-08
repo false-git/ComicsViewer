@@ -20,8 +20,11 @@ int main(int argc, char *argv[])
 
     // i18n
     QTranslator myappTranslator;
-    myappTranslator.load(":/i18n/ComicsViewer_" + QLocale::system().name());
-    app.installTranslator(&myappTranslator);
+    if (myappTranslator.load(":/i18n/ComicsViewer_" + QLocale::system().name())) {
+        app.installTranslator(&myappTranslator);
+    } else {
+        qDebug() << "can't load translator for" << QLocale::system().name();
+    }
 
     // QMLを表示する
     QQmlApplicationEngine engine;
