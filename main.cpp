@@ -20,7 +20,8 @@ int main(int argc, char *argv[])
 
     // i18n
     QTranslator myappTranslator;
-    if (myappTranslator.load(":/i18n/ComicsViewer_" + QLocale::system().name())) {
+    //if (myappTranslator.load(":/i18n/ComicsViewer_" + QLocale::system().name())) {
+    if (myappTranslator.load(QLocale::system(), "ComicsViewer", "_", ":/i18n")) {
         app.installTranslator(&myappTranslator);
     } else {
         qDebug() << "can't load translator for" << QLocale::system().name();
